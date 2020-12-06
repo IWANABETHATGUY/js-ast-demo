@@ -74,7 +74,7 @@ function transformTargetObject(node, path) {
 // }
 // const res = foo === undefined ? void 0 : foo.bar === undefined ? void 0 : foo.bar['a'] === undefined ? void 0 : foo.bar['a']['b'] === undefined ? void 0 : foo.bar['a']['b']['c'] === undefined ? void 0 : foo.bar['a']['b']['c'];
 // console.log(res);
-const code = `
-let foo = {bar: {something: '222'}}
-foo === undefined ? void 0 : foo.bar === undefined ? void 0 : foo.bar;
-`;
+// const code = `
+// let foo = {bar: {something: '222'}}
+// foo === undefined ? void 0 : foo.bar === undefined ? void 0 : foo.bar;
+// `;
