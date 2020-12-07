@@ -1,0 +1,20 @@
+{
+  "name": "type-checking-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "parcel index.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/parser": "^7.11.5",
+    "@codemirror/next": "^0.12.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.9",
+    "parcel-bundler": "^1.12.4"
+  }
+}
