@@ -6,6 +6,7 @@ import { tagExtension } from '@codemirror/next/state';
 import { linter } from '@codemirror/next/lint';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
+// import { hoverTooltip, showTooltip, tooltips } from '@codemirror/next/tooltip';
 const languageTag = Symbol('language');
 const VariableType = {
   Any: 1 << 0,
@@ -46,6 +47,7 @@ const autoLanguage = EditorState.transactionFilter.of(tr => {
   ];
 });
 const scopeStack = new ScopeStack();
+let ast;
 // eslint-disable-next-line no-unused-vars
 const editor = new EditorView({
   state: EditorState.create({
@@ -57,7 +59,8 @@ const editor = new EditorView({
       linter(view => {
         const content = view.state.doc.toString();
         const diagnostics = [];
-        const ast = parse(content, { errorRecovery: true });
+        ast = parse(content, { errorRecovery: true });
+
         // parsing error
         ast.errors.forEach(error => {
           diagnostics.push({
@@ -68,59 +71,7 @@ const editor = new EditorView({
           });
         });
         // simple type checking
-        traverse(ast, {
-          Scope: {
-            enter(path) {
-              let scopeTypeMap = {};
-              Object.values(path.scope.bindings).forEach(binding => {
-                scopeTypeMap[binding.identifier.name] = {
-                  kind: binding.kind,
-                  type: getBindType(binding),
-                };
-                if (!binding.referenced) {
-                  const identifier = binding.identifier;
-                  diagnostics.push({
-                    from: identifier.start,
-                    to: identifier.end,
-                    message: `the variable ${identifier.name} is defined but never used`,
-                    severity: 'warning',
-                  });
-                }
-              });
-              scopeStack.push(scopeTypeMap);
-              console.log(JSON.stringify(scopeStack));
-            },
-            exit() {
-              scopeStack.pop();
-            },
-          },
-          AssignmentExpression(path) {
-            let node = path.node;
-            let left = node.left;
-            let right = node.right;
-            console.assert(left.type === 'Identifier');
-            let leftInfo = scopeStack.find(left.name);
-            let rightType;
-            if (right.type === 'Identifier') {
-              rightType = scopeStack.find(right.name).type;
-            } else {
-              rightType = getNodeType(right);
-            }
-            if (
-              !(leftInfo.type === VariableType.Any || rightType === VariableType.Any || leftInfo.type === rightType)
-            ) {
-              console.log('error happen', leftInfo.type, rightType);
-              diagnostics.push({
-                from: left.start,
-                to: left.end,
-                message: `${variableTypeToString(rightType)} can't assign to '${
-                  left.name
-                }', which type is ${variableTypeToString(leftInfo.type)}`,
-                severity: 'error',
-              });
-            }
-          },
-        });
+        typeChecking(ast, diagnostics);
         diagnostics.sort((a, b) => a.from - b.from);
         return diagnostics;
       }),
@@ -146,6 +97,7 @@ function getNodeType(node) {
     case 'NumericLiteral':
       return VariableType.Number;
     case 'StringLiteral':
+    case 'TemplateLiteral':
       return VariableType.String;
     case 'BooleanLiteral':
       return VariableType.Boolean;
@@ -165,4 +117,64 @@ function variableTypeToString(variableType) {
     case VariableType.String:
       return 'string';
   }
+}
+
+/**
+ *
+ *
+ * @param {File} ast
+ * @param {any[]} diagnostics
+ */
+function typeChecking(ast, diagnostics) {
+  traverse(ast, {
+    Scope: {
+      enter(path) {
+        let scopeTypeMap = {};
+        Object.values(path.scope.bindings).forEach(binding => {
+          scopeTypeMap[binding.identifier.name] = {
+            kind: binding.kind,
+            type: getBindType(binding),
+          };
+          if (!binding.referenced) {
+            const identifier = binding.identifier;
+            diagnostics.push({
+              from: identifier.start,
+              to: identifier.end,
+              message: `the variable ${identifier.name} is defined but never used`,
+              severity: 'warning',
+            });
+          }
+        });
+        scopeStack.push(scopeTypeMap);
+        console.log(JSON.stringify(scopeStack));
+      },
+      exit() {
+        scopeStack.pop();
+      },
+    },
+    AssignmentExpression(path) {
+      let node = path.node;
+      let left = node.left;
+      let right = node.right;
+      console.assert(left.type === 'Identifier');
+      let leftInfo = scopeStack.find(left.name);
+      let rightType;
+      if (right.type === 'Identifier') {
+        rightType = scopeStack.find(right.name)?.type;
+      } else {
+        rightType = getNodeType(right);
+      }
+      if (!(leftInfo.type === VariableType.Any || rightType === VariableType.Any || leftInfo.type === rightType)) {
+        console.log('error happen', leftInfo.type, rightType);
+        diagnostics.push({
+          from: path.node.start,
+          to: path.node.end,
+          message: `${variableTypeToString(rightType)} can't assign to '${
+            left.name
+          }', which type is ${variableTypeToString(leftInfo.type)}`,
+          severity: 'error',
+        });
+      }
+    },
+  });
 }
