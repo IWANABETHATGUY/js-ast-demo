@@ -1,4 +1,4 @@
-const a = { b: { c: 'something', d: 'ddd', e: {f: 'fff'} }, c: 'test' };
+let a = { b: { c: 'something', d: 'ddd', e: {f: 'fff'} }, c: 'test' };
 
 type key<T> = keyof T;
 type s = key<typeof a>;
@@ -7,9 +7,12 @@ type Path<T> = keyof { [P in keyof T & string as T[P] extends object ? `${P}.${P
 
 type res = Path<typeof a>;
 
-function safe_get<T>(obj: T, ...args: Split<Path<T>>) {
+function safe_get<T>(obj: T, ...path: Split<Path<T>>) {
 
 }
 type Split<T> = T extends `${infer R}.${infer U}` ? [R, ...Split<U>]  : T extends string ? [T] : [];
-safe_get(a, "b", "c", "f")
-type resss = Split<Path<typeof a>>
+
+// @ts-expect-error
+safe_get(a, "b", "d", "f")
+safe_get(a, "b", "e", "f")
+safe_get(a, "c")
