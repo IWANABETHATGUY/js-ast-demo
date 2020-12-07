@@ -5,8 +5,9 @@ import { EditorView, basicSetup } from '@codemirror/next/basic-setup';
 import { tagExtension } from '@codemirror/next/state';
 import { linter } from '@codemirror/next/lint';
 import { parse } from '@babel/parser';
+import { isMemberExpression, isFunctionDeclaration } from '@babel/types';
 import traverse from '@babel/traverse';
-// import { hoverTooltip, showTooltip, tooltips } from '@codemirror/next/tooltip';
+import { hoverTooltip } from '@codemirror/next/tooltip';
 const languageTag = Symbol('language');
 const VariableType = {
   Any: 1 << 0,
@@ -51,11 +52,54 @@ let ast;
 // eslint-disable-next-line no-unused-vars
 const editor = new EditorView({
   state: EditorState.create({
-    doc: 'let a = 3;\na = 4;',
+    doc: `let a = 3;
+a = 4;
+function test() {
+  a
+}`,
     extensions: [
       basicSetup,
       tagExtension(languageTag, javascript()),
       autoLanguage,
+      hoverTooltip(
+        (_view, check) => {
+          let result = null;
+          traverse(ast, {
+            Identifier(path) {
+              if (isMemberExpression(path.parentPath) || isFunctionDeclaration(path.parentPath)) {
+                return;
+              }
+              path.stop;
+              const node = path.node;
+              if (check(node.start, node.end)) {
+                let curScope = path.scope;
+                let symbolTable = curScope.__symbolTable__;
+                let info;
+                // debugger
+                while (curScope && symbolTable && !info) {
+                  info = symbolTable[node.name];
+                  curScope = curScope.parent;
+                  symbolTable = curScope?.__symbolTable__;
+                }
+                result = {
+                  pos: node.start,
+                  create() {
+                    const p = document.createElement('p');
+                    p.innerHTML = variableTypeToString(info?.type) || 'undefined';
+                    return {
+                      dom: p,
+                    };
+                  },
+                };
+                path.stop();
+                // debugger
+              }
+            },
+          });
+          return result;
+        },
+        { hideOnChange: false }
+      ),
       linter(view => {
         const content = view.state.doc.toString();
         const diagnostics = [];
@@ -130,6 +174,7 @@ function typeChecking(ast, diagnostics) {
     Scope: {
       enter(path) {
         let scopeTypeMap = {};
+        path.scope.__symbolTable__ = scopeTypeMap;
         Object.values(path.scope.bindings).forEach(binding => {
           scopeTypeMap[binding.identifier.name] = {
             kind: binding.kind,
@@ -146,7 +191,7 @@ function typeChecking(ast, diagnostics) {
           }
         });
         scopeStack.push(scopeTypeMap);
-        console.log(JSON.stringify(scopeStack));
+        // console.log(JSON.stringify(scopeStack));
       },
       exit() {
         scopeStack.pop();
@@ -156,7 +201,7 @@ function typeChecking(ast, diagnostics) {
       let node = path.node;
       let left = node.left;
       let right = node.right;
-      console.assert(left.type === 'Identifier');
+      // console.assert(left.type === 'Identifier');
       let leftInfo = scopeStack.find(left.name);
       let rightType;
       if (right.type === 'Identifier') {
@@ -165,7 +210,7 @@ function typeChecking(ast, diagnostics) {
         rightType = getNodeType(right);
       }
       if (!(leftInfo.type === VariableType.Any || rightType === VariableType.Any || leftInfo.type === rightType)) {
-        console.log('error happen', leftInfo.type, rightType);
+        // console.log('error happen', leftInfo.type, rightType);
         diagnostics.push({
           from: path.node.start,
           to: path.node.end,
