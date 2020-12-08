@@ -54,6 +54,7 @@ const editor = new EditorView({
   state: EditorState.create({
     doc: `let a = 3;
 a = 4;
+let b = a;
 function test() {
   a
 }`,
@@ -130,13 +131,13 @@ function getBindType(binding) {
       return VariableType.Any;
     }
     //TODO: init is a expression and so on
-    return getNodeType(binding.path.node.init);
+    return getNodeType(binding.path.node.init, binding.scope);
   } else {
     return VariableType.Any;
   }
 }
 
-function getNodeType(node) {
+function getNodeType(node, scope) {
   switch (node.type) {
     case 'NumericLiteral':
       return VariableType.Number;
@@ -145,6 +146,15 @@ function getNodeType(node) {
       return VariableType.String;
     case 'BooleanLiteral':
       return VariableType.Boolean;
+    case 'Identifier': {
+      let type;
+      let name = node.name;
+      while (type === undefined && scope) {
+        type = scope.__symbolTable__[name]?.type;
+        scope = scope.parent;
+      }
+      return type;
+    }
     default:
       return VariableType.Any;
   }
