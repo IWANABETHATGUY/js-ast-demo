@@ -62,64 +62,8 @@ function test() {
       basicSetup,
       tagExtension(languageTag, javascript()),
       autoLanguage,
-      hoverTooltip(
-        (_view, check) => {
-          let result = null;
-          traverse(ast, {
-            Identifier(path) {
-              if (isMemberExpression(path.parentPath) || isFunctionDeclaration(path.parentPath)) {
-                return;
-              }
-              path.stop;
-              const node = path.node;
-              if (check(node.start, node.end)) {
-                let curScope = path.scope;
-                let symbolTable = curScope.__symbolTable__;
-                let info;
-                // debugger
-                while (curScope && symbolTable && !info) {
-                  info = symbolTable[node.name];
-                  curScope = curScope.parent;
-                  symbolTable = curScope?.__symbolTable__;
-                }
-                result = {
-                  pos: node.start,
-                  create() {
-                    const p = document.createElement('p');
-                    p.innerHTML = variableTypeToString(info?.type) || 'undefined';
-                    return {
-                      dom: p,
-                    };
-                  },
-                };
-                path.stop();
-                // debugger
-              }
-            },
-          });
-          return result;
-        },
-        { hideOnChange: false }
-      ),
-      linter(view => {
-        const content = view.state.doc.toString();
-        const diagnostics = [];
-        ast = parse(content, { errorRecovery: true });
-
-        // parsing error
-        ast.errors.forEach(error => {
-          diagnostics.push({
-            from: error.pos,
-            to: error.pos,
-            message: error.message,
-            severity: 'error',
-          });
-        });
-        // simple type checking
-        typeChecking(ast, diagnostics);
-        diagnostics.sort((a, b) => a.from - b.from);
-        return diagnostics;
-      }),
+      hoverTooltip(hoverTooltipProvider, { hideOnChange: false }),
+      linter(linterProvider),
     ],
   }),
   parent: document.querySelector('#app'),
@@ -232,4 +176,62 @@ function typeChecking(ast, diagnostics) {
       }
     },
   });
+}
+
+function hoverTooltipProvider(_view, check) {
+  let result = null;
+  traverse(ast, {
+    Identifier(path) {
+      if (isMemberExpression(path.parentPath) || isFunctionDeclaration(path.parentPath)) {
+        return;
+      }
+      path.stop;
+      const node = path.node;
+      if (check(node.start, node.end)) {
+        let curScope = path.scope;
+        let symbolTable = curScope.__symbolTable__;
+        let info;
+        // debugger
+        while (curScope && symbolTable && !info) {
+          info = symbolTable[node.name];
+          curScope = curScope.parent;
+          symbolTable = curScope?.__symbolTable__;
+        }
+        result = {
+          pos: node.start,
+          above: true,
+          create() {
+            const p = document.createElement('p');
+            p.innerHTML = variableTypeToString(info?.type) || 'undefined';
+            return {
+              dom: p,
+            };
+          },
+        };
+        path.stop();
+        // debugger
+      }
+    },
+  });
+  return result;
+}
+
+function linterProvider(view) {
+  const content = view.state.doc.toString();
+  const diagnostics = [];
+  ast = parse(content, { errorRecovery: true });
+
+  // parsing error
+  ast.errors.forEach(error => {
+    diagnostics.push({
+      from: error.pos,
+      to: error.pos,
+      message: error.message,
+      severity: 'error',
+    });
+  });
+  // simple type checking
+  typeChecking(ast, diagnostics);
+  diagnostics.sort((a, b) => a.from - b.from);
+  return diagnostics;
 }
