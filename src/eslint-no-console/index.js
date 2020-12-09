@@ -17,11 +17,11 @@ const rule = {
             object.type === 'Identifier' &&
             property.type === 'Identifier' &&
             object.name === 'console' &&
-            property.name === 'log'
+            ['log', 'info', 'warn', 'error'].includes(property.name)
           ) {
             context.report({
               loc: node.loc,
-              message: `'console.log' is disabled`,
+              message: `'console' is disabled`,
               node: node,
               *fix(fixer) {
                 let nextToken = sourceCode.getTokenAfter(node);

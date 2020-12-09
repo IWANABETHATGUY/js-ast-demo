@@ -25,23 +25,34 @@ linter.run('no-console', rule, {
   ],
   invalid: [
     {
-      code: stripIndentAndTrim(`
+      code: stripIndent(`
     let a = 4;
     function test() {
       console.log('something');
     }
+    console.test('this is custom function')
+    console.info('something')
     `),
       errors: [
         {
-          message: `'console.log' is disabled`,
+          message: `'console' is disabled`,
+          column: 3,
+          line: 4,
         },
+        {
+          message: `'console' is disabled`
+        }
       ],
-      output: stripIndentAndTrim(`
-    let a = 4;
-    function test() {
-      
-    }
-    `),
+      output: stripIndent(
+        `
+      let a = 4;
+      function test() {
+        
+      }
+      console.test('this is custom function')
+
+      `
+      ),
     },
   ],
 });
