@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint src --ext js",
-    "test": "jest",
-    "test:sget": "jest  --testPathPattern=src/traverse_sget"
+    "test:all": "yarn test:babel && yarn test:eslint",
+    "test:babel": "jest",
+    "test:sget": "jest  --testPathPattern=src/traverse_sget",
+    "test:eslint": "mocha \"src/eslint*/__test__/*.js\"",
+    "test:no-console": "mocha \"src/eslint-no-console/__test__/*.js\" --reporter dot"
   },
   "repository": {
     "type": "git",
@@ -23,7 +26,9 @@
     "@types/eslint": "^7.2.6",
     "@types/jest": "^26.0.16",
     "eslint": "^7.15.0",
-    "jest": "^26.6.3"
+    "jest": "^26.6.3",
+    "mocha": "^7.1.2",
+    "strip-indent": "^3.0.0"
   },
   "author": "",
   "license": "ISC",
