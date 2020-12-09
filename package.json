@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint src --ext js",
-    "test:all": "yarn test:babel && yarn test:eslint",
+    "test:all": "npm run test:babel && npm run test:eslint",
     "test:babel": "jest",
     "test:sget": "jest  --testPathPattern=src/traverse_sget",
     "test:eslint": "mocha \"src/eslint*/__test__/*.js\"",
